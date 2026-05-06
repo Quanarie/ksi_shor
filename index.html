@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorytm Shora - GUI Kwantowe</title>
+    <style>
+        :root {
+            --bg-color: #0b111b;
+            --card-bg: #161d27;
+            --accent-blue: #007bff;
+            --accent-purple: #8a2be2;
+            --text-main: #e0e6ed;
+            --text-dim: #94a3b8;
+            --border-color: #2d3748;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px 25px;
+            background: rgba(22, 29, 39, 0.8);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 15px;
+            padding: 15px;
+            flex-grow: 1;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        h3 { margin-top: 0; font-size: 1rem; color: var(--accent-blue); }
+
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; }
+        input { 
+            width: 100%; background: #0b111b; border: 1px solid var(--border-color); 
+            color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;
+        }
+
+        button {
+            width: 100%; padding: 10px; border: none; border-radius: 4px; 
+            cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .btn-run { background: var(--accent-blue); color: white; margin-top: 10px; }
+        .btn-run:hover { background: #0056b3; }
+
+        .step-item {
+            display: flex; align-items: center; gap: 10px; padding: 12px;
+            border-radius: 6px; cursor: pointer; margin-bottom: 5px;
+            border: 1px solid transparent; transition: 0.2s;
+        }
+        .step-item:hover { background: rgba(255,255,255,0.05); }
+        .step-item.active { border-color: var(--accent-blue); background: rgba(0, 123, 255, 0.1); }
+        .step-num { 
+            width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--text-dim);
+            display: flex; align-items: center; justify-content: center; font-size: 0.8rem;
+        }
+        .active .step-num { background: var(--accent-blue); border-color: var(--accent-blue); }
+
+        .circuit-area {
+            flex-grow: 2; display: flex; align-items: center; justify-content: center;
+            background: #fff; border-radius: 8px; position: relative; color: #333;
+            min-height: 300px;
+        }
+
+        .histogram {
+            display: flex; align-items: flex-end; gap: 10px; height: 150px;
+            padding-top: 20px; border-bottom: 1px solid var(--border-color);
+        }
+        .bar { 
+            flex-grow: 1; background: var(--accent-blue); border-radius: 3px 3px 0 0; 
+            position: relative; transition: height 1s ease-out;
+        }
+        .bar::after { 
+            content: attr(data-val); position: absolute; top: -20px; left: 50%; 
+            transform: translateX(-50%); font-size: 0.7rem; 
+        }
+
+        #stage-description { font-size: 0.9rem; line-height: 1.5; color: var(--text-dim); }
+
+        footer {
+            padding: 8px 20px; background: var(--card-bg); border-top: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+<header>Algorytm Shora - Faktoryzacja liczb</header>
+
+<div class="dashboard">
+    <!-- Kolumna Lewa -->
+    <div class="column">
+        <div class="card">
+            <h3>1. Ustawienia</h3>
+            <div class="input-group">
+                <label>Liczba N do rozkładu:</label>
+                <input type="number" id="inputN" value="15">
+            </div>
+            <div class="input-group">
+                <label>Podstawa a:</label>
+                <input type="number" id="inputA" value="2">
+            </div>
+            <button class="btn-run" onclick="runAlgorithm()">Uruchom algorytm</button>
+        </div>
+
+        <div class="card">
+            <h3>Postęp algorytmu</h3>
+            <div id="steps-container">
+                <div class="step-item active" onclick="showStep(1)">
+                    <div class="step-num">1</div> <span>Superpozycja</span>
+                </div>
+                <div class="step-item" onclick="showStep(2)">
+                    <div class="step-num">2</div> <span>Potęgowanie modularne</span>
+                </div>
+                <div class="step-item" onclick="showStep(3)">
+                    <div class="step-num">3</div> <span>Odwrotna QFT</span>
+                </div>
+                <div class="step-item" onclick="showStep(4)">
+                    <div class="step-num">4</div> <span>Pomiar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kolumna Środkowa -->
+    <div class="column">
+        <div class="card circuit-area" id="circuit-viz">
+            <div style="text-align: center; color: #888;">
+                <p>[ Wizualizacja obwodu kwantowego Qiskit ]</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>4. Opis etapu</h3>
+            <div id="stage-description">
+                Wybierz krok algorytmu po lewej stronie, aby zobaczyć szczegóły operacji kwantowych.
+            </div>
+        </div>
+    </div>
+
+    <!-- Kolumna Prawa -->
+    <div class="column">
+        <div class="card">
+            <h3>3. Wyniki pomiarów</h3>
+            <div class="histogram" id="histogram">
+                <div class="bar" style="height: 0%" data-val="0"></div>
+                <div class="bar" style="height: 0%" data-val="0"></div>
+                <div class="bar" style="height: 0%" data-val="0"></div>
+                <div class="bar" style="height: 0%" data-val="0"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Analiza klasyczna</h3>
+            <p>Wynik (r): <span id="res-r" style="color: var(--accent-blue);">--</span></p>
+            <p>Czynniki: <b id="res-factors" style="color: var(--success);">--</b></p>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div id="status">Status: Gotowy</div>
+    <div id="runtime">Czas wykonania: 0.00s</div>
+</footer>
+
+<script>
+    const stepsData = {
+        1: "Zastosowano bramki Hadamarda na rejestrze sterującym. Tworzymy superpozycję wszystkich możliwych stanów wejściowych, co pozwala na równoległe obliczenia kwantowe.",
+        2: "Najbardziej kosztowny etap: obliczanie funkcji f(x) = a^x mod N. Wykorzystujemy bramki kontrolowane, aby zakodować okres funkcji w fazach stanów kwantowych.",
+        3: "Odwrotna Kwantowa Transformata Fouriera (IQFT) pozwala 'wyłuskać' okres r z fazy. Przekształca ona reprezentację częstotliwościową z powrotem na mierzalne wartości.",
+        4: "Pomiar rejestru sterującego zapada funkcję falową do konkretnego stanu. Wynik pomiaru z wysokim prawdopodobieństwem pozwoli wyliczyć r, a następnie czynniki N."
+    };
+
+    function showStep(stepNum) {
+        // Aktualizacja UI kroków
+        document.querySelectorAll('.step-item').forEach((item, idx) => {
+            item.classList.toggle('active', idx === stepNum - 1);
+        });
+
+        // Aktualizacja opisu
+        document.getElementById('stage-description').innerText = stepsData[stepNum];
+    }
+
+    function runAlgorithm() {
+        const status = document.getElementById('status');
+        const n = document.getElementById('inputN').value;
+        
+        status.innerText = "Status: Uruchamianie backendu (Qiskit)...";
+        status.style.color = "orange";
+
+        // Symulacja requestu do Pythona
+        setTimeout(() => {
+            status.innerText = "Status: Zakończono pomyślnie";
+            status.style.color = "var(--success)";
+            document.getElementById('runtime').innerText = "Czas wykonania: 2.34s";
+
+            // Mockowanie wyników histogramu
+            const bars = document.querySelectorAll('.bar');
+            const mockValues = [24.4, 25.1, 25.0, 25.4];
+            bars.forEach((bar, i) => {
+                bar.style.height = (mockValues[i] * 3) + "px";
+                bar.setAttribute('data-val', mockValues[i] + "%");
+            });
+
+            // Wyniki końcowe
+            document.getElementById('res-r').innerText = "4";
+            document.getElementById('res-factors').innerText = "3 x 5 = 15";
+            
+            showStep(4);
+        }, 1500);
+    }
+</script>
+
+</body>
+</html>
