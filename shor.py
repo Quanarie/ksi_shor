@@ -4,7 +4,6 @@ from qiskit_aer import AerSimulator
 from qiskit.visualization import plot_histogram
 from fractions import Fraction
 from math import gcd
-import matplotlib
 import os
 import uuid
 
