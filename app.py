@@ -36,8 +36,8 @@ def shor_circuit(a, n_count=8):
         qcircuit.append(c_amod15(a, 2 ** q), [q] + [i + n_count for i in range(4)])
     qft = QFTGate(n_count).inverse()
     qcircuit.append(qft, range(n_count))
-    for qubit in range(n_count // 2):
-        qcircuit.swap(qubit, n_count - qubit - 1)
+    #for qubit in range(n_count // 2):
+    #    qcircuit.swap(qubit, n_count - qubit - 1)
     qcircuit.measure(range(n_count), range(n_count))
     return qcircuit
 
