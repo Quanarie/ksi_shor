@@ -1,17 +1,11 @@
 ## Potrzebne instalacje
 
 ```bash
-pip install qiskit
+pip install flask qiskit qiskit-aer matplotlib pylatexenc
 ```
 
-```bash
-pip install qiskit_aer
-```
+## Uruchomienie backend + frontend
 
 ```bash
-pip install matplotlib
-```
-
-```bash
-pip install pylatexenc
+python app.py
 ```

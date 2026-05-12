@@ -87,7 +87,7 @@
         .circuit-area {
             flex-grow: 2; display: flex; align-items: center; justify-content: center;
             background: #fff; border-radius: 8px; position: relative; color: #333;
-            min-height: 300px;
+            max-height: 500px;
         }
 
         .histogram {
@@ -211,31 +211,47 @@
 
     function runAlgorithm() {
         const status = document.getElementById('status');
-        const n = document.getElementById('inputN').value;
+        const nValue = document.getElementById('inputN').value;
+        const aValue = document.getElementById('inputA').value;
         
-        status.innerText = "Status: Uruchamianie backendu (Qiskit)...";
+        status.innerText = "Status: Obliczanie na symulatorze kwantowym...";
         status.style.color = "orange";
 
-        // Symulacja requestu do Pythona
-        setTimeout(() => {
-            status.innerText = "Status: Zakończono pomyślnie";
-            status.style.color = "var(--success)";
-            document.getElementById('runtime').innerText = "Czas wykonania: 2.34s";
+        fetch('/run_shor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ N: nValue, a: aValue })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                status.innerText = "Status: Zakończono pomyślnie";
+                status.style.color = "var(--success)";
+                document.getElementById('runtime').innerText = `Czas wykonania: ${data.runtime}s`;
+                
+                // Aktualizacja r i czynników
+                document.getElementById('res-r').innerText = data.r;
+                document.getElementById('res-factors').innerText = data.factors;
 
-            // Mockowanie wyników histogramu
-            const bars = document.querySelectorAll('.bar');
-            const mockValues = [24.4, 25.1, 25.0, 25.4];
-            bars.forEach((bar, i) => {
-                bar.style.height = (mockValues[i] * 3) + "px";
-                bar.setAttribute('data-val', mockValues[i] + "%");
-            });
+                // Podmiana obrazka obwodu
+                const circuitArea = document.getElementById('circuit-viz');
+                circuitArea.innerHTML = `<img src="${data.circuit_url}" style="max-width: 100%; max-height: 100%;">`;
 
-            // Wyniki końcowe
-            document.getElementById('res-r').innerText = "4";
-            document.getElementById('res-factors').innerText = "3 x 5 = 15";
-            
-            showStep(4);
-        }, 1500);
+                // Aktualizacja histogramu (podmieniamy na obrazek z Qiskit)
+                const histoArea = document.getElementById('histogram');
+                histoArea.innerHTML = `<img src="${data.histo_url}" style="width: 100%; height: auto;">`;
+                histoArea.style.height = "auto";
+
+                showStep(4);
+            } else {
+                status.innerText = "Błąd: " + data.error;
+                status.style.color = "red";
+            }
+        })
+        .catch(err => {
+            status.innerText = "Status: Błąd połączenia z backendem";
+            status.style.color = "red";
+        });
     }
 </script>
 
