@@ -36,8 +36,6 @@ def shor_circuit(a, n_count=8):
         qcircuit.append(c_amod15(a, 2 ** q), [q] + [i + n_count for i in range(4)])
     qft = QFTGate(n_count).inverse()
     qcircuit.append(qft, range(n_count))
-    #for qubit in range(n_count // 2):
-    #    qcircuit.swap(qubit, n_count - qubit - 1)
     qcircuit.measure(range(n_count), range(n_count))
     return qcircuit
 
@@ -75,7 +73,14 @@ def run_shor():
         measured = max(counts, key=counts.get)
         decimal = int(measured, 2)
         phase = decimal / (2 ** 8)
-        r = Fraction(phase).limit_denominator(15).denominator
+        fraction = Fraction(phase).limit_denominator(15)
+
+        candidate_r = fraction.denominator
+        r = candidate_r
+        while pow(a, r, N) != 1:
+            r += candidate_r
+            if r > N:
+                raise ValueError("Failed to determine correct period")
         
         factors = "Nie znaleziono"
         if r % 2 == 0:
