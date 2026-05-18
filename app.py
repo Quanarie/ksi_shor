@@ -1,13 +1,16 @@
+import math
+
 import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask, render_template, request, jsonify
 from qiskit import QuantumCircuit, transpile
-from qiskit.circuit.library import QFTGate
+from qiskit.circuit.library import QFTGate, UnitaryGate
 from qiskit_aer import AerSimulator
 from qiskit.visualization import plot_histogram
 from fractions import Fraction
 from math import gcd
+import numpy as np
 import os
 import uuid
 import time
@@ -28,12 +31,43 @@ def c_amod15(a, power):
     U.name = f"{a}^{power} mod 15"
     return U.control()
 
-def shor_circuit(a, n_count=8):
-    qcircuit = QuantumCircuit(n_count + 4, n_count)
+def c_amodN(a, power, N, n_qubits):
+    
+    if gcd(a, N) != 1 or a <= 1 or a >= N:
+        raise ValueError("a must be coprime with N and between 2 and N-1")
+
+    size = 2 ** n_qubits
+
+    U = np.zeros((size, size))
+
+    multiplier = pow(a, power, N)
+
+    for x in range(N):
+        y = (multiplier * x) % N
+        U[y][x] = 1
+
+    # Stany powyżej N pozostają bez zmian
+    for x in range(N, size):
+        U[x][x] = 1
+
+    gate = UnitaryGate(U)
+
+    gate.name = f"{a}^{power} mod {N}"
+
+    return gate.control()
+
+def shor_circuit(a, N, n_count=8):
+    n_target = math.ceil(math.log2(N))
+
+    qcircuit = QuantumCircuit(n_count + n_target, n_count)
+
+    #qcircuit = QuantumCircuit(n_count + 4, n_count)
     for q in range(n_count): qcircuit.h(q)
     qcircuit.x(n_count)
     for q in range(n_count):
-        qcircuit.append(c_amod15(a, 2 ** q), [q] + [i + n_count for i in range(4)])
+        qcircuit.append(c_amodN(a, 2 ** q, N, n_target), [q] + [i + n_count for i in range(n_target)])
+    #for q in range(n_count):
+    #    qcircuit.append(c_amod15(a, 2 ** q), [q] + [i + n_count for i in range(4)])
     qft = QFTGate(n_count).inverse()
     qcircuit.append(qft, range(n_count))
     qcircuit.measure(range(n_count), range(n_count))
@@ -51,11 +85,12 @@ def run_shor():
     
     start_time = time.time()
     
-    if N != 15:
-        return jsonify({"error": "Ten demonstrator obsługuje tylko N=15 (specyfika obwodu)."}), 400
+    if N not in [15, 21, 35]:
+        return jsonify({"error": "Ten demonstrator obsługuje tylko N=15, 21, 35 (specyfika kodu)."}), 400
 
     try:
-        qc = shor_circuit(a)
+        n_count = math.ceil(math.log2(N)) * 2
+        qc = shor_circuit(a, N, n_count)
         simulator = AerSimulator()
         compiled = transpile(qc, simulator)
         result = simulator.run(compiled, shots=1024).result()
