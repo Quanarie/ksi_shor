@@ -17,20 +17,6 @@ import time
 
 app = Flask(__name__)
 
-def c_amod15(a, power):
-    if a not in [2, 4, 7, 8, 11, 13]:
-        raise ValueError("a must be one of: 2,4,7,8,11,13")
-    U = QuantumCircuit(4)
-    for _ in range(power):
-        if a in [2, 13]: U.swap(0, 1); U.swap(1, 2); U.swap(2, 3)
-        if a in [7, 8]: U.swap(2, 3); U.swap(1, 2); U.swap(0, 1)
-        if a in [4, 11]: U.swap(0, 2); U.swap(1, 3)
-        if a in [7, 11, 13]:
-            for q in range(4): U.x(q)
-    U = U.to_gate()
-    U.name = f"{a}^{power} mod 15"
-    return U.control()
-
 def c_amodN(a, power, N, n_qubits):
     
     if gcd(a, N) != 1 or a <= 1 or a >= N:
@@ -61,13 +47,11 @@ def shor_circuit(a, N, n_count=8):
 
     qcircuit = QuantumCircuit(n_count + n_target, n_count)
 
-    #qcircuit = QuantumCircuit(n_count + 4, n_count)
     for q in range(n_count): qcircuit.h(q)
     qcircuit.x(n_count)
     for q in range(n_count):
         qcircuit.append(c_amodN(a, 2 ** q, N, n_target), [q] + [i + n_count for i in range(n_target)])
-    #for q in range(n_count):
-    #    qcircuit.append(c_amod15(a, 2 ** q), [q] + [i + n_count for i in range(4)])
+
     qft = QFTGate(n_count).inverse()
     qcircuit.append(qft, range(n_count))
     qcircuit.measure(range(n_count), range(n_count))
