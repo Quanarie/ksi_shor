@@ -85,14 +85,14 @@ def run_shor():
         circuit_path = f"static/circuit_{unique_id}.png"
         histo_path = f"static/histo_{unique_id}.png"
 
-        qc.draw(output='mpl', filename=circuit_path)
+        qc.draw(output='mpl', filename=circuit_path, fold = -1)
         fig = plot_histogram(counts)
         fig.savefig(histo_path)
 
         measured = max(counts, key=counts.get)
         decimal = int(measured, 2)
         phase = decimal / (2 ** 8)
-        fraction = Fraction(phase).limit_denominator(15)
+        fraction = Fraction(phase).limit_denominator(N)
 
         candidate_r = fraction.denominator
         r = candidate_r
