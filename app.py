@@ -69,8 +69,8 @@ def run_shor():
     
     start_time = time.time()
     
-    if N not in [15, 21, 35]:
-        return jsonify({"error": "Ten demonstrator obsługuje tylko N=15, 21, 35 (specyfika kodu)."}), 400
+    #if N not in [15, 21, 35]:
+    #    return jsonify({"error": "Ten demonstrator obsługuje tylko N=15, 21, 35 (specyfika kodu)."}), 400
 
     try:
         n_count = math.ceil(math.log2(N)) * 2
@@ -86,12 +86,12 @@ def run_shor():
         histo_path = f"static/histo_{unique_id}.png"
 
         qc.draw(output='mpl', filename=circuit_path, fold = -1)
-        fig = plot_histogram(counts)
+        fig = plot_histogram(counts, number_to_keep=10)
         fig.savefig(histo_path)
 
         measured = max(counts, key=counts.get)
         decimal = int(measured, 2)
-        phase = decimal / (2 ** 8)
+        phase = decimal / (2 ** n_count)
         fraction = Fraction(phase).limit_denominator(N)
 
         candidate_r = fraction.denominator
