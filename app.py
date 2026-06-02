@@ -119,6 +119,43 @@ def run_shor():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+    
+@app.route('/benchmark', methods=['GET'])
+def run_benchmark():
+    test_cases = [15, 21, 35]
+    a_value = 2 
+    results = []
+    
+    simulator = AerSimulator()
+    
+    for N in test_cases:
+        start_time = time.time()
+        
+        try:
+            n_count = math.ceil(math.log2(N)) * 2
+            qc = shor_circuit(a_value, N, n_count)
+            
+            # Transpilacja, aby uzyskać dokładne statystyki dla symulatora
+            compiled = transpile(qc, simulator)
+            
+            # Odpalamy z mniejszą liczbą strzałów (shots), aby benchmark działał trochę szybciej
+            simulator.run(compiled, shots=100).result()
+            
+            exec_time = round(time.time() - start_time, 2)
+            
+            results.append({
+                "N": N,
+                "qubits": compiled.num_qubits,
+                "depth": compiled.depth(),
+                "time": exec_time
+            })
+        except Exception as e:
+            results.append({
+                "N": N,
+                "error": str(e)
+            })
+            
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True)

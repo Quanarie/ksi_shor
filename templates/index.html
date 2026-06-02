@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Algorytm Shora - GUI Kwantowe</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #0b111b;
@@ -31,8 +32,24 @@
             padding: 15px 25px;
             background: rgba(22, 29, 39, 0.8);
             border-bottom: 1px solid var(--border-color);
-            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+
+        .header-title { font-weight: bold; font-size: 1.2rem; }
+
+        /* Style zakładek (Tabs) */
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            background: transparent; border: 1px solid var(--border-color);
+            color: var(--text-dim); padding: 8px 16px; border-radius: 4px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--accent-blue); color: white; border-color: var(--accent-blue);
+        }
+        .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
 
         .dashboard {
             display: grid;
@@ -40,22 +57,20 @@
             gap: 15px;
             padding: 15px;
             flex-grow: 1;
+            overflow-y: auto;
         }
 
-        .column {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+        /* Widok ukryty */
+        .hidden { display: none !important; }
+
+        .column { display: flex; flex-direction: column; gap: 15px; }
 
         .card {
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
+            background-color: var(--card-bg); border-radius: 8px;
+            padding: 20px; border: 1px solid var(--border-color);
         }
 
-        h3 { margin-top: 0; font-size: 1rem; color: var(--accent-blue); }
+        h3 { margin-top: 0; font-size: 1rem; color: var(--accent-blue); margin-bottom: 15px; }
 
         .input-group { margin-bottom: 15px; }
         label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; }
@@ -87,7 +102,7 @@
         .circuit-area {
             flex-grow: 2; display: flex; align-items: center; justify-content: center;
             background: #fff; border-radius: 8px; position: relative; color: #333;
-            max-height: 500px;
+            max-height: 500px; overflow: hidden;
         }
 
         .histogram {
@@ -109,14 +124,34 @@
             padding: 8px 20px; background: var(--card-bg); border-top: 1px solid var(--border-color);
             display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim);
         }
+
+        /* Style dla drugiej zakładki (Benchmark) */
+        .benchmark-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; height: 100%; box-sizing: border-box;
+        }
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        
+        .complexity-table {
+            width: 100%; border-collapse: collapse; margin-top: 10px;
+        }
+        .complexity-table th, .complexity-table td {
+            padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color);
+        }
+        .complexity-table th { color: var(--accent-blue); font-weight: normal; }
+        .complexity-table tr:hover { background: rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
 
-<header>Algorytm Shora - Faktoryzacja liczb</header>
+<header>
+    <div class="header-title">Algorytm Shora - Faktoryzacja liczb</div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('main')">Główny Algorytm</button>
+        <button class="tab-btn" onclick="switchTab('benchmark')">Analiza i Skalowalność</button>
+    </div>
+</header>
 
-<div class="dashboard">
-    <!-- Kolumna Lewa -->
+<div id="tab-main" class="dashboard">
     <div class="column">
         <div class="card">
             <h3>1. Ustawienia</h3>
@@ -150,7 +185,6 @@
         </div>
     </div>
 
-    <!-- Kolumna Środkowa -->
     <div class="column">
         <div class="card circuit-area" id="circuit-viz">
             <div style="text-align: center; color: #888;">
@@ -166,7 +200,6 @@
         </div>
     </div>
 
-    <!-- Kolumna Prawa -->
     <div class="column">
         <div class="card">
             <h3>3. Wyniki pomiarów</h3>
@@ -186,12 +219,60 @@
     </div>
 </div>
 
+<div id="tab-benchmark" class="benchmark-grid hidden">
+    <div class="column">
+        <div class="card">
+            <h3>Panel 1: Porównanie czasu symulacji klasycznej</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">
+                Złożoność symulacji układów kwantowych na klasycznym komputerze rośnie wykładniczo. Poniższy wykres prezentuje rzeczywisty czas obliczeń dla różnych wartości N na tym serwerze.
+            </p>
+            <div class="chart-container">
+                <canvas id="timeChart"></canvas>
+            </div>
+            <button class="btn-run" onclick="runBenchmark()" id="btn-benchmark">Uruchom testy wydajności</button>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="card">
+            <h3>Panel 2: Złożoność układu kwantowego</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">
+                Sprzęt kwantowy ocenia się m.in. przez zapotrzebowanie na kubity oraz głębokość obwodu (ilość sekwencyjnych operacji).
+            </p>
+            <table class="complexity-table">
+                <thead>
+                    <tr>
+                        <th>Liczba N</th>
+                        <th>Wymagane Kubity</th>
+                        <th>Głębokość obwodu</th>
+                    </tr>
+                </thead>
+                <tbody id="complexity-tbody">
+                    <tr><td colspan="3" style="color: var(--text-dim);">Brak danych. Uruchom testy wydajności.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <footer>
     <div id="status">Status: Gotowy</div>
     <div id="runtime">Czas wykonania: 0.00s</div>
 </footer>
 
 <script>
+    // --- LOGIKA ZAKŁADEK ---
+    function switchTab(tabName) {
+        document.getElementById('tab-main').classList.add('hidden');
+        document.getElementById('tab-benchmark').classList.add('hidden');
+        
+        document.getElementById('tab-' + tabName).classList.remove('hidden');
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    // --- LOGIKA ALGORYTMU (ZAKŁADKA 1) ---
     const stepsData = {
         1: "Zastosowano bramki Hadamarda na rejestrze sterującym. Tworzymy superpozycję wszystkich możliwych stanów wejściowych, co pozwala na równoległe obliczenia kwantowe.",
         2: "Najbardziej kosztowny etap: obliczanie funkcji f(x) = a^x mod N. Wykorzystujemy bramki kontrolowane, aby zakodować okres funkcji w fazach stanów kwantowych.",
@@ -200,12 +281,9 @@
     };
 
     function showStep(stepNum) {
-        // Aktualizacja UI kroków
         document.querySelectorAll('.step-item').forEach((item, idx) => {
             item.classList.toggle('active', idx === stepNum - 1);
         });
-
-        // Aktualizacja opisu
         document.getElementById('stage-description').innerText = stepsData[stepNum];
     }
 
@@ -229,15 +307,12 @@
                 status.style.color = "var(--success)";
                 document.getElementById('runtime').innerText = `Czas wykonania: ${data.runtime}s`;
                 
-                // Aktualizacja r i czynników
                 document.getElementById('res-r').innerText = data.r;
                 document.getElementById('res-factors').innerText = data.factors;
 
-                // Podmiana obrazka obwodu
                 const circuitArea = document.getElementById('circuit-viz');
                 circuitArea.innerHTML = `<img src="${data.circuit_url}" style="max-width: 100%; max-height: 100%;">`;
 
-                // Aktualizacja histogramu (podmieniamy na obrazek z Qiskit)
                 const histoArea = document.getElementById('histogram');
                 histoArea.innerHTML = `<img src="${data.histo_url}" style="width: 100%; height: auto;">`;
                 histoArea.style.height = "auto";
@@ -252,6 +327,103 @@
             status.innerText = "Status: Błąd połączenia z backendem";
             status.style.color = "red";
         });
+    }
+
+    // --- LOGIKA BENCHMARKÓW (ZAKŁADKA 2) ---
+    let timeChartInstance = null;
+
+    function initChart(labels, dataPoints) {
+        const ctx = document.getElementById('timeChart').getContext('2d');
+        
+        if(timeChartInstance) {
+            timeChartInstance.destroy();
+        }
+
+        timeChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Czas symulacji (sekundy)',
+                    data: dataPoints,
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#e0e6ed' } }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: '#2d3748' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: 'transparent' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Inicjalizacja pustego wykresu na start
+    initChart(['N=15', 'N=21', 'N=35'], [0, 0, 0]);
+
+    function runBenchmark() {
+        const btn = document.getElementById('btn-benchmark');
+        const status = document.getElementById('status');
+        const tbody = document.getElementById('complexity-tbody');
+
+        btn.innerText = "Trwa przeprowadzanie testów (może zająć ok. 10s)...";
+        btn.disabled = true;
+        status.innerText = "Status: Generowanie obwodów i pomiar czasu...";
+        status.style.color = "orange";
+        tbody.innerHTML = '<tr><td colspan="3" style="color: var(--accent-blue);">Ładowanie danych...</td></tr>';
+
+        fetch('/benchmark')
+            .then(res => res.json())
+            .then(data => {
+                const labels = data.map(d => 'N = ' + d.N);
+                const times = data.map(d => d.time || 0);
+
+                // Aktualizacja wykresu
+                initChart(labels, times);
+
+                // Aktualizacja tabeli złożoności
+                tbody.innerHTML = '';
+                data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    if (item.error) {
+                        tr.innerHTML = `<td>${item.N}</td><td colspan="2" style="color: red;">Błąd: ${item.error}</td>`;
+                    } else {
+                        tr.innerHTML = `
+                            <td><strong>${item.N}</strong></td>
+                            <td>${item.qubits}</td>
+                            <td>${item.depth}</td>
+                        `;
+                    }
+                    tbody.appendChild(tr);
+                });
+
+                btn.innerText = "Odśwież wyniki testów";
+                btn.disabled = false;
+                status.innerText = "Status: Benchmark zakończony";
+                status.style.color = "var(--success)";
+            })
+            .catch(err => {
+                btn.innerText = "Ponów próbę";
+                btn.disabled = false;
+                status.innerText = "Status: Błąd podczas benchmarku";
+                status.style.color = "red";
+                tbody.innerHTML = '<tr><td colspan="3" style="color: red;">Wystąpił błąd pobierania danych.</td></tr>';
+            });
     }
 </script>
 
